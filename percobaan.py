@@ -363,9 +363,9 @@ with tab1:
                     'bar': {'color': '#4facfe'},
                     'bgcolor': '#0d1b2a',
                     'steps': [
-                        {'range': [0, 45],  'color': '#cb2d3e33'},
-                        {'range': [45, 70], 'color': '#f7971e33'},
-                        {'range': [70, 100],'color': '#00b09b33'},
+                        {'range': [0, 45],  'color': 'rgba(203,45,62,0.2)'},
+                        {'range': [45, 70], 'color': 'rgba(247,151,30,0.2)'},
+                        {'range': [70, 100],'color': 'rgba(0,176,155,0.2)'},
                     ],
                     'threshold': {
                         'line': {'color': 'white', 'width': 2},
@@ -457,7 +457,8 @@ with tab2:
 
     def plot_mf(universe, variable, input_val, title, xlabel):
         fig = go.Figure()
-        colors = ['#4facfe', '#00f2fe', '#a8d4f5']
+        colors      = ['#4facfe', '#00f2fe', '#a8d4f5']
+        fill_colors = ['rgba(79,172,254,0.15)', 'rgba(0,242,254,0.15)', 'rgba(168,212,245,0.15)']
         labels = list(variable.terms.keys())
 
         for i, label in enumerate(labels):
@@ -468,7 +469,7 @@ with tab2:
                 name=label.capitalize(),
                 line=dict(color=colors[i % len(colors)], width=2.5),
                 fill='tozeroy',
-                fillcolor=colors[i % len(colors)].replace(')', ',0.1)').replace('rgb', 'rgba') if 'rgb' in colors[i % len(colors)] else colors[i % len(colors)] + '1a'
+                fillcolor=fill_colors[i % len(fill_colors)]
             ))
 
         # Vertical line for current value
