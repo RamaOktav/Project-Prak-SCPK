@@ -178,8 +178,8 @@ def build_fuzzy_system():
 
     # Membership functions - Absences
     absences['sedikit'] = fuzz.trapmf(absences.universe, [0, 0, 5, 12])
-    absences['sedang']  = fuzz.trimf(absences.universe, [9, 13, 17])
-    absences['banyak']  = fuzz.trapmf(absences.universe, [15, 20, 30, 30])
+    absences['sedang']  = fuzz.trimf(absences.universe, [8, 15, 22])
+    absences['banyak']  = fuzz.trapmf(absences.universe, [18, 25, 30, 30])
 
     # Membership functions - Study Time
     study_time['kurang'] = fuzz.trapmf(study_time.universe, [0, 0, 4, 8])
@@ -217,8 +217,8 @@ def build_fuzzy_system():
 
         # GPA TINGGI → dominan diterima
         ctrl.Rule(gpa['tinggi'] & absences['banyak']  & study_time['kurang'], kelayakan['ditolak']),
-        ctrl.Rule(gpa['tinggi'] & absences['banyak']  & study_time['cukup'],  kelayakan['dipertimbangkan']),
-        ctrl.Rule(gpa['tinggi'] & absences['banyak']  & study_time['banyak'], kelayakan['dipertimbangkan']),
+        ctrl.Rule(gpa['tinggi'] & absences['banyak']  & study_time['cukup'],  kelayakan['ditolak']),
+        ctrl.Rule(gpa['tinggi'] & absences['banyak']  & study_time['banyak'], kelayakan['ditolak']),
         ctrl.Rule(gpa['tinggi'] & absences['sedang']  & study_time['kurang'], kelayakan['dipertimbangkan']),
         ctrl.Rule(gpa['tinggi'] & absences['sedang']  & study_time['cukup'],  kelayakan['dipertimbangkan']),
         ctrl.Rule(gpa['tinggi'] & absences['sedang']  & study_time['banyak'], kelayakan['diterima']),
@@ -613,26 +613,57 @@ with tab3:
 
         st.markdown('<div class="divider"></div>', unsafe_allow_html=True)
 
+        # Hitung skor fuzzy seluruh siswa
+        df_rank = df.copy()
+
+        scores = []
+
+        for _, row in df_rank.iterrows():
+            sim_tmp, _, _, _, _ = build_fuzzy_system()
+
+            sim_tmp.input['gpa'] = row['GPA']
+            sim_tmp.input['absences'] = row['Absences']
+            sim_tmp.input['study_time'] = row['StudyTimeWeekly']
+
+            sim_tmp.compute()
+
+            scores.append(sim_tmp.output['kelayakan'])
+
+        df_rank['Skor_Kelayakan'] = scores
+
+        df_rank['Status'] = df_rank['Skor_Kelayakan'].apply(
+            lambda x:
+                "Diterima" if x >= 70
+                else "Dipertimbangkan" if x >= 45
+                else "Ditolak"
+        )
+
         col_left, col_right = st.columns(2)
 
         with col_left:
-            # Distribusi GradeClass
-            grade_map = {0: 'A (≥3.5)', 1: 'B (3.0-3.5)', 2: 'C (2.5-3.0)', 3: 'D (2.0-2.5)', 4: 'F (<2.0)'}
-            grade_counts = df['GradeClass'].value_counts().sort_index()
-            grade_labels = [grade_map.get(int(k), str(k)) for k in grade_counts.index]
+            status_counts = df_rank['Status'].value_counts()
 
             fig_pie = go.Figure(go.Pie(
-                labels=grade_labels,
-                values=grade_counts.values,
+                labels=status_counts.index,
+                values=status_counts.values,
                 hole=0.4,
-                marker=dict(colors=['#00b09b', '#4facfe', '#f7971e', '#ef473a', '#cb2d3e']),
+                marker=dict(
+                    colors=[
+                        '#cb2d3e',
+                        '#f7971e',
+                        '#00b09b'
+                    ]
+                ),
                 textfont=dict(color='white')
             ))
+
             fig_pie.update_layout(
-                title=dict(text="Distribusi Grade Siswa", font=dict(color='#a8d4f5')),
+                title=dict(
+                    text="Tingkat Kelolosan Siswa",
+                    font=dict(color='#a8d4f5')
+                ),
                 paper_bgcolor='rgba(0,0,0,0)',
                 font=dict(color='#a8d4f5'),
-                legend=dict(font=dict(color='#a8d4f5'), bgcolor='rgba(0,0,0,0)'),
                 height=320
             )
             st.plotly_chart(fig_pie, use_container_width=True)
@@ -654,23 +685,79 @@ with tab3:
             )
             st.plotly_chart(fig_hist, use_container_width=True)
 
-        # Scatter: GPA vs StudyTime
-        fig_scatter = px.scatter(
-            df, x='StudyTimeWeekly', y='GPA',
-            color='GradeClass',
-            color_continuous_scale='Blues',
-            title='Hubungan Waktu Belajar vs GPA',
-            labels={'StudyTimeWeekly': 'Waktu Belajar (jam/minggu)', 'GPA': 'GPA'}
+        st.markdown('<div class="divider"></div>', unsafe_allow_html=True)
+
+        # ── Ranking Siswa (Tabel List) ──
+        st.markdown("### 🏆 Ranking Siswa Berdasarkan Skor Kelayakan")
+
+        # Tentukan kolom kegiatan yang tersedia
+        activity_cols = {
+            'Extracurricular': 'Ekskul',
+            'Sports':          'Olahraga',
+            'Music':           'Musik',
+            'Volunteering':    'Volunteer',
+        }
+        available_act = {k: v for k, v in activity_cols.items() if k in df_rank.columns}
+
+        # Buat kolom Kegiatan gabungan
+        def build_activities(row):
+            acts = [label for col, label in available_act.items() if row.get(col, 0) == 1]
+            return ', '.join(acts) if acts else '—'
+
+        df_rank['Kegiatan'] = df_rank.apply(build_activities, axis=1)
+
+        # Sort & ranking
+        ranking_df = df_rank.sort_values('Skor_Kelayakan', ascending=False).reset_index(drop=True)
+        ranking_df.insert(0, 'Ranking', ranking_df.index + 1)
+
+        # Filter & pencarian
+        col_search, col_filter = st.columns([2, 1])
+        with col_search:
+            search_id = st.text_input("🔍 Cari ID Siswa", placeholder="Ketik StudentID...")
+        with col_filter:
+            filter_status = st.selectbox("📌 Filter Status", ["Semua", "Diterima", "Dipertimbangkan", "Ditolak"])
+
+        # Terapkan filter
+        display_df = ranking_df.copy()
+        if search_id:
+            id_col = 'StudentID' if 'StudentID' in display_df.columns else display_df.columns[1]
+            display_df = display_df[display_df[id_col].astype(str).str.contains(search_id, case=False)]
+        if filter_status != "Semua":
+            display_df = display_df[display_df['Status'] == filter_status]
+
+        # Pilih kolom yang akan ditampilkan
+        id_col = 'StudentID' if 'StudentID' in display_df.columns else display_df.columns[1]
+        show_cols = ['Ranking', id_col, 'GPA', 'Absences', 'StudyTimeWeekly', 'Kegiatan', 'Skor_Kelayakan', 'Status']
+        show_cols = [c for c in show_cols if c in display_df.columns]
+
+        table_df = display_df[show_cols].rename(columns={
+            id_col:            'ID Siswa',
+            'GPA':             'GPA',
+            'Absences':        'Absensi (hari)',
+            'StudyTimeWeekly': 'Belajar (jam/minggu)',
+            'Skor_Kelayakan':  'Skor Kelayakan',
+        })
+
+        # Warna baris berdasarkan status
+        def highlight_status(row):
+            s = row['Status']
+            if s == 'Diterima':
+                bg = 'background-color: rgba(0,176,155,0.15); color: #00b09b'
+            elif s == 'Dipertimbangkan':
+                bg = 'background-color: rgba(247,151,30,0.15); color: #f7971e'
+            else:
+                bg = 'background-color: rgba(203,45,62,0.15); color: #ef473a'
+            return [bg] * len(row)
+
+        st.dataframe(
+            table_df.style
+                .apply(highlight_status, axis=1)
+                .format({'GPA': '{:.2f}', 'Skor Kelayakan': '{:.1f}'}),
+            use_container_width=True,
+            height=450,
         )
-        fig_scatter.update_layout(
-            paper_bgcolor='rgba(0,0,0,0)',
-            plot_bgcolor='rgba(13,27,42,0.8)',
-            font=dict(color='#a8d4f5'),
-            xaxis=dict(gridcolor='#1e3a5f'),
-            yaxis=dict(gridcolor='#1e3a5f'),
-            height=350
-        )
-        st.plotly_chart(fig_scatter, use_container_width=True)
+
+        st.caption(f"Menampilkan {len(display_df):,} dari {len(ranking_df):,} siswa")
 
 
 # ─── FOOTER ────────────────────────────────────────────────────
