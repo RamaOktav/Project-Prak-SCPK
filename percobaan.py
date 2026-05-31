@@ -160,15 +160,15 @@ h2, h3 {
 """, unsafe_allow_html=True)
 
 
-# ─── FUZZY LOGIC SETUP ─────────────────────────────────────────
+# Proses Fuzzy
 @st.cache_resource
 def build_fuzzy_system():
-    # Input variables
+    # Input variabel
     gpa = ctrl.Antecedent(np.arange(0, 4.1, 0.1), 'gpa')
     absences = ctrl.Antecedent(np.arange(0, 31, 1), 'absences')
     study_time = ctrl.Antecedent(np.arange(0, 21, 1), 'study_time')
 
-    # Output variable
+    # Output variabel
     kelayakan = ctrl.Consequent(np.arange(0, 101, 1), 'kelayakan')
 
     # Membership functions - GPA
@@ -193,7 +193,7 @@ def build_fuzzy_system():
 
     # Rules
     rules = [
-        # GPA RENDAH → dominan ditolak
+        # GPA RENDAH
         ctrl.Rule(gpa['rendah'] & absences['banyak']  & study_time['kurang'], kelayakan['ditolak']),
         ctrl.Rule(gpa['rendah'] & absences['banyak']  & study_time['cukup'],  kelayakan['ditolak']),
         ctrl.Rule(gpa['rendah'] & absences['banyak']  & study_time['banyak'], kelayakan['ditolak']),
@@ -204,7 +204,7 @@ def build_fuzzy_system():
         ctrl.Rule(gpa['rendah'] & absences['sedikit'] & study_time['cukup'],  kelayakan['ditolak']),
         ctrl.Rule(gpa['rendah'] & absences['sedikit'] & study_time['banyak'], kelayakan['ditolak']),
 
-        # GPA CUKUP → tergantung absen & study time
+        # GPA CUKUP
         ctrl.Rule(gpa['cukup'] & absences['banyak']  & study_time['kurang'], kelayakan['ditolak']),
         ctrl.Rule(gpa['cukup'] & absences['banyak']  & study_time['cukup'],  kelayakan['ditolak']),
         ctrl.Rule(gpa['cukup'] & absences['banyak']  & study_time['banyak'], kelayakan['ditolak']),
@@ -277,7 +277,7 @@ def get_activity_bonus(extracurricular, sports, music, volunteering):
         bonus += 1
 
     if volunteering:
-        bonus += 3
+        bonus += 2
 
     return bonus
 
@@ -286,7 +286,7 @@ with st.sidebar:
     st.markdown("## 🎓 Input Data Siswa")
     st.markdown('<div class="divider"></div>', unsafe_allow_html=True)
 
-    nama = st.text_input("👤 Nama Siswa", placeholder="Masukkan nama...")
+    nama = st.text_input("Nama Siswa", placeholder="Masukkan nama...")
 
     st.markdown("### 📊 Parameter Akademik")
 
@@ -314,7 +314,7 @@ with st.sidebar:
         help="Rata-rata jam belajar per minggu"
     )
 
-    st.markdown("### 🏆 Aktivitas Siswa")
+    st.markdown("### Aktivitas Siswa")
 
     extracurricular = st.checkbox("Ekstrakurikuler")
     sports = st.checkbox("Olahraga")
