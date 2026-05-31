@@ -6,7 +6,7 @@ import pandas as pd
 import plotly.graph_objects as go
 import plotly.express as px
 
-#PAGE CONFIG
+# ─── PAGE CONFIG ───────────────────────────────────────────────
 st.set_page_config(
     page_title="Sistem Kelayakan Beasiswa",
     page_icon="🎓",
@@ -14,7 +14,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# CUSTOM CSS 
+# ─── CUSTOM CSS ────────────────────────────────────────────────
 st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap');
@@ -149,7 +149,7 @@ h2, h3 {
 """, unsafe_allow_html=True)
 
 
-# FUZZY SYSTEM 
+#  FUZZY SYSTEM 
 @st.cache_resource
 def build_fuzzy_system():
     gpa       = ctrl.Antecedent(np.arange(0, 4.1, 0.1), 'gpa')
@@ -233,7 +233,7 @@ def hitung_skor_batch(df, sim):
             sim.compute()
             skor_fuzzy = sim.output['kelayakan']
 
-            # bonus aktivitas — kolom bisa 0/1 atau tidak ada
+            # Tambahkan bonus aktivitas — kolom bisa 0/1 atau tidak ada
             bonus = get_activity_bonus(
                 bool(int(row.get('Extracurricular', 0))),
                 bool(int(row.get('Sports',          0))),
@@ -246,7 +246,7 @@ def hitung_skor_batch(df, sim):
     return scores
 
 
-# LOAD DATA 
+#  LOAD DATA 
 CSV_PATH = 'Student_performance_data_.csv'
 
 def load_data():
@@ -264,7 +264,7 @@ def simpan_ke_csv(baris: dict):
     """
     df_existing = load_data()
 
-    # Buat ID baru
+    # Buat ID baru: lanjutkan dari ID terbesar yang ada
     if 'StudentID' in df_existing.columns and not df_existing.empty:
         try:
             last_id = pd.to_numeric(df_existing['StudentID'], errors='coerce').max()
@@ -274,7 +274,8 @@ def simpan_ke_csv(baris: dict):
     else:
         new_id = 9001
 
-    
+    # Susun baris baru sesuai kolom CSV asli
+    # Kolom yang tidak tersedia di form diisi 0
     baris_csv = {
         'StudentID':        new_id,
         'Age':              0,
@@ -299,7 +300,7 @@ def simpan_ke_csv(baris: dict):
     return new_id
 
 
-# HELPER FUNCTIONS
+#  HELPER FUNCTIONS 
 def get_grade_label(gpa_val):
     if gpa_val >= 3.5: return "A", "grade-a"
     elif gpa_val >= 3.0: return "B", "grade-b"
@@ -337,7 +338,7 @@ with st.sidebar:
     try:
         gpa_input = float(gpa_raw.replace(',', '.'))
         if gpa_input < 0.0 or gpa_input > 4.0:
-            st.error("GPA harus antara 0.0 dan 4.0!")
+            st.error("GPA harus antara 0.0 dan 4.0")
             gpa_input = max(0.0, min(4.0, gpa_input))
     except ValueError:
         st.error("GPA tidak valid! gunakan angka (contoh: 3.75)")
@@ -369,9 +370,9 @@ with st.sidebar:
 
     st.markdown('<div class="divider"></div>', unsafe_allow_html=True)
 
-    hitung = st.button("Tambah ke dataset", use_container_width=True, type="primary")
+    hitung = st.button("Hitung Kelayakan", use_container_width=True, type="primary")
 
-    st.markdown("### ℹ️ Keterangan Nilai")
+    st.markdown("### Keterangan Nilai")
     st.markdown("""
     <div class="info-box">
     🟢 GPA ≥ 3.5 → Grade A<br>
@@ -393,24 +394,38 @@ sim, fz_gpa, fz_abs, fz_study, fz_kel = build_fuzzy_system()
 tab1, tab2, tab3 = st.tabs(["Evaluasi Siswa", "Visualisasi Fuzzy", "Data Statistik"])
 
 
-# TAB 1: EVALUASI
-with tab1:
-    score_fuzzy = 0.0
-    bonus       = 0
-    score       = 0.0
-    try:
-        sim.input['gpa']        = gpa_input
-        sim.input['absences']   = absences_input
-        sim.input['study_time'] = study_input
-        sim.compute()
-        score_fuzzy = sim.output['kelayakan']
-        bonus       = get_activity_bonus(extracurricular, sports, music, volunteering)
-        score       = min(score_fuzzy + bonus, 100)
-    except Exception as e:
-        st.error(f"Error saat menghitung fuzzy: {e}")
 
-    # ── Simpan ke CSV saat tombol Hitung ditekan ──
-    if hitung:
+# TAB 1: EVALUASI
+
+with tab1:
+    # Initialize score variable
+    score = 0.0
+    
+    # Tampilkan placeholder sebelum tombol diklik
+    if not hitung:
+        st.markdown("""
+        <div class="info-box" style="text-align:center; padding: 40px 20px; font-size:1.1rem;">
+            📋 Silakan isi data siswa di sidebar, lalu klik
+            <strong>Hitung Kelayakan</strong> untuk melihat hasil evaluasi.
+        </div>
+        """, unsafe_allow_html=True)
+    else:
+        # ── Hitung fuzzy ──
+        score_fuzzy = 0.0
+        bonus       = 0
+        score       = 0.0
+        try:
+            sim.input['gpa']        = gpa_input
+            sim.input['absences']   = absences_input
+            sim.input['study_time'] = study_input
+            sim.compute()
+            score_fuzzy = sim.output['kelayakan']
+            bonus       = get_activity_bonus(extracurricular, sports, music, volunteering)
+            score       = min(score_fuzzy + bonus, 100)
+        except Exception as e:
+            st.error(f"Error saat menghitung fuzzy: {e}")
+
+        # ── Simpan ke CSV ──
         if not nama.strip():
             st.warning("Harap isi **Nama Siswa** sebelum menyimpan.")
         else:
@@ -431,95 +446,97 @@ with tab1:
             except Exception as e:
                 st.error(f"❌ Gagal menyimpan data: {e}")
 
-    status_text, status_class = get_status(score)
+        status_text, status_class = get_status(score)
 
-    col1, col2, col3 = st.columns([1, 1, 1])
+        col1, col2, col3 = st.columns([1, 1, 1])
 
-    with col1:
-        st.markdown("#### 👤 Identitas")
-        st.markdown(f"**Nama:** {nama if nama else 'Belum diisi'}")
-        st.markdown(f"**GPA:** `{gpa_input}` / 4.0")
-        st.markdown(f"**Absensi:** `{absences_input}` hari")
-        st.markdown(f"**Waktu Belajar:** `{study_input:.1f}` jam/minggu")
-        aktivitas = []
-        if extracurricular: aktivitas.append("Ekskul")
-        if sports:          aktivitas.append("Olahraga")
-        if music:           aktivitas.append("Musik")
-        if volunteering:    aktivitas.append("Volunteer")
-        st.markdown(f"**Aktivitas:** {', '.join(aktivitas) if aktivitas else 'Tidak ada'}")
+        with col1:
+            st.markdown("####Identitas")
+            st.markdown(f"**Nama:** {nama if nama else 'Belum diisi'}")
+            st.markdown(f"**GPA:** `{gpa_input}` / 4.0")
+            st.markdown(f"**Absensi:** `{absences_input}` hari")
+            st.markdown(f"**Waktu Belajar:** `{study_input:.1f}` jam/minggu")
+            aktivitas = []
+            if extracurricular: aktivitas.append("Ekskul")
+            if sports:          aktivitas.append("Olahraga")
+            if music:           aktivitas.append("Musik")
+            if volunteering:    aktivitas.append("Volunteer")
+            st.markdown(f"**Aktivitas:** {', '.join(aktivitas) if aktivitas else 'Tidak ada'}")
 
-    with col2:
-        st.markdown("#### Skor Kelayakan")
-        st.markdown(f'<div class="score-big">{score:.1f}</div>', unsafe_allow_html=True)
-        st.caption(f"Skor Fuzzy: {score_fuzzy:.1f} | Bonus Aktivitas: +{bonus}")
-        st.markdown('<div style="color:#3d5a80; font-size:0.9rem;">dari 100</div>', unsafe_allow_html=True)
+        with col2:
+            st.markdown("####Skor Kelayakan")
+            st.markdown(f'<div class="score-big">{score:.1f}</div>', unsafe_allow_html=True)
+            st.caption(f"Skor Fuzzy: {score_fuzzy:.1f} | Bonus Aktivitas: +{bonus}")
+            st.markdown('<div style="color:#3d5a80; font-size:0.9rem;">dari 100</div>', unsafe_allow_html=True)
 
-        fig_gauge = go.Figure(go.Indicator(
-            mode="gauge+number",
-            value=score,
-            domain={'x': [0, 1], 'y': [0, 1]},
-            gauge={
-                'axis': {'range': [0, 100], 'tickcolor': '#4facfe'},
-                'bar':  {'color': '#4facfe'},
-                'bgcolor': '#0d1b2a',
-                'steps': [
-                    {'range': [0, 45],   'color': 'rgba(203,45,62,0.2)'},
-                    {'range': [45, 70],  'color': 'rgba(247,151,30,0.2)'},
-                    {'range': [70, 100], 'color': 'rgba(0,176,155,0.2)'},
-                ],
-                'threshold': {
-                    'line': {'color': 'white', 'width': 2},
-                    'thickness': 0.75,
-                    'value': score
-                }
-            },
-            number={'font': {'color': '#4facfe', 'size': 40}}
-        ))
-        fig_gauge.update_layout(
-            height=200,
-            margin=dict(l=20, r=20, t=20, b=20),
-            paper_bgcolor='rgba(0,0,0,0)',
-            font={'color': '#a8d4f5'}
-        )
-        st.plotly_chart(fig_gauge, use_container_width=True)
+            fig_gauge = go.Figure(go.Indicator(
+                mode="gauge+number",
+                value=score,
+                domain={'x': [0, 1], 'y': [0, 1]},
+                gauge={
+                    'axis': {'range': [0, 100], 'tickcolor': '#4facfe'},
+                    'bar':  {'color': '#4facfe'},
+                    'bgcolor': '#0d1b2a',
+                    'steps': [
+                        {'range': [0, 45],   'color': 'rgba(203,45,62,0.2)'},
+                        {'range': [45, 70],  'color': 'rgba(247,151,30,0.2)'},
+                        {'range': [70, 100], 'color': 'rgba(0,176,155,0.2)'},
+                    ],
+                    'threshold': {
+                        'line': {'color': 'white', 'width': 2},
+                        'thickness': 0.75,
+                        'value': score
+                    }
+                },
+                number={'font': {'color': '#4facfe', 'size': 40}}
+            ))
+            fig_gauge.update_layout(
+                height=200,
+                margin=dict(l=20, r=20, t=20, b=20),
+                paper_bgcolor='rgba(0,0,0,0)',
+                font={'color': '#a8d4f5'}
+            )
+            st.plotly_chart(fig_gauge, use_container_width=True)
 
-    with col3:
-        st.markdown("#### Status")
-        st.markdown(f'<div class="{status_class}">{status_text}</div>', unsafe_allow_html=True)
-        st.markdown("<br>", unsafe_allow_html=True)
-        if score >= 70:
-            st.markdown('<div class="info-box">Siswa memenuhi kriteria dan <strong>layak menerima beasiswa</strong>. Pertahankan prestasi akademik!</div>', unsafe_allow_html=True)
-        elif score >= 45:
-            st.markdown('<div class="info-box">Siswa <strong>perlu ditinjau lebih lanjut</strong>. Tingkatkan GPA dan kurangi absensi.</div>', unsafe_allow_html=True)
-        else:
-            st.markdown('<div class="info-box">Siswa <strong>belum memenuhi kriteria</strong>. Fokus pada peningkatan GPA dan kehadiran.</div>', unsafe_allow_html=True)
+        with col3:
+            st.markdown("####Status")
+            st.markdown(f'<div class="{status_class}">{status_text}</div>', unsafe_allow_html=True)
+            st.markdown("<br>", unsafe_allow_html=True)
+            if score >= 70:
+                st.markdown('<div class="info-box">Siswa memenuhi kriteria dan <strong>layak menerima beasiswa</strong>. Pertahankan prestasi akademik!</div>', unsafe_allow_html=True)
+            elif score >= 45:
+                st.markdown('<div class="info-box">Siswa <strong>perlu ditinjau lebih lanjut</strong>. Tingkatkan GPA dan kurangi absensi.</div>', unsafe_allow_html=True)
+            else:
+                st.markdown('<div class="info-box">Siswa <strong>belum memenuhi kriteria</strong>. Fokus pada peningkatan GPA dan kehadiran.</div>', unsafe_allow_html=True)
 
-    st.markdown("### Derajat Keanggotaan Fuzzy")
-    col_a, col_b, col_c = st.columns(3)
+        st.markdown("### Derajat Keanggotaan Fuzzy")
+        col_a, col_b, col_c = st.columns(3)
 
-    with col_a:
-        st.markdown("**GPA**")
-        for label in ['rendah', 'cukup', 'tinggi']:
-            mf    = fuzz.interp_membership(fz_gpa.universe, fz_gpa[label].mf, gpa_input)
-            color = "#4facfe" if mf > 0 else "#3d5a80"
-            st.markdown(f'<div style="color:{color}">• {label.capitalize()}: <strong>{mf:.3f}</strong></div>', unsafe_allow_html=True)
+        with col_a:
+            st.markdown("**GPA**")
+            for label in ['rendah', 'cukup', 'tinggi']:
+                mf    = fuzz.interp_membership(fz_gpa.universe, fz_gpa[label].mf, gpa_input)
+                color = "#4facfe" if mf > 0 else "#3d5a80"
+                st.markdown(f'<div style="color:{color}">• {label.capitalize()}: <strong>{mf:.3f}</strong></div>', unsafe_allow_html=True)
 
-    with col_b:
-        st.markdown("**Absensi**")
-        for label in ['sedikit', 'sedang', 'banyak']:
-            mf    = fuzz.interp_membership(fz_abs.universe, fz_abs[label].mf, absences_input)
-            color = "#4facfe" if mf > 0 else "#3d5a80"
-            st.markdown(f'<div style="color:{color}">• {label.capitalize()}: <strong>{mf:.3f}</strong></div>', unsafe_allow_html=True)
+        with col_b:
+            st.markdown("**Absensi**")
+            for label in ['sedikit', 'sedang', 'banyak']:
+                mf    = fuzz.interp_membership(fz_abs.universe, fz_abs[label].mf, absences_input)
+                color = "#4facfe" if mf > 0 else "#3d5a80"
+                st.markdown(f'<div style="color:{color}">• {label.capitalize()}: <strong>{mf:.3f}</strong></div>', unsafe_allow_html=True)
 
-    with col_c:
-        st.markdown("**Waktu Belajar**")
-        for label in ['kurang', 'cukup', 'banyak']:
-            mf    = fuzz.interp_membership(fz_study.universe, fz_study[label].mf, study_input)
-            color = "#4facfe" if mf > 0 else "#3d5a80"
-            st.markdown(f'<div style="color:{color}">• {label.capitalize()}: <strong>{mf:.3f}</strong></div>', unsafe_allow_html=True)
+        with col_c:
+            st.markdown("**Waktu Belajar**")
+            for label in ['kurang', 'cukup', 'banyak']:
+                mf    = fuzz.interp_membership(fz_study.universe, fz_study[label].mf, study_input)
+                color = "#4facfe" if mf > 0 else "#3d5a80"
+                st.markdown(f'<div style="color:{color}">• {label.capitalize()}: <strong>{mf:.3f}</strong></div>', unsafe_allow_html=True)
+
 
 
 # TAB 2: VISUALISASI FUZZY
+
 with tab2:
     st.markdown("### Fungsi Keanggotaan")
 
@@ -565,7 +582,9 @@ with tab2:
         st.plotly_chart(plot_mf(fz_kel.universe,   fz_kel,   score,         "Output Kelayakan",      "Skor"), use_container_width=True)
 
 
+
 # TAB 3: STATISTIK DATA
+
 with tab3:
     df = load_data()
 
@@ -586,7 +605,7 @@ with tab3:
 
         st.markdown('<div class="divider"></div>', unsafe_allow_html=True)
 
-        # Hitung skor fuzzy
+        # ── Hitung skor fuzzy EFISIEN: pakai 1 simulasi untuk semua baris ──
         df_rank = df.copy()
         with st.spinner("Menghitung skor kelayakan seluruh siswa..."):
             df_rank['Skor_Kelayakan'] = hitung_skor_batch(df_rank, sim)
@@ -695,9 +714,9 @@ with tab3:
         st.caption(f"Menampilkan {len(display_df):,} dari {len(ranking_df):,} siswa")
 
 
-# ─── FOOTER ────────────────────────────────────────────────────
+#  FOOTER 
 st.markdown('<div class="divider"></div>', unsafe_allow_html=True)
 st.markdown(
-    '<div class="footer">Sistem Kelayakan Beasiswa Logika Fuzzy Mamdani• Rizky Rama Oktavian • Aas Monika</div>',
+    '<div class="footer">Sistem Kelayakan Beasiswa Metode Fuzzy Mamdani• Rizky Rama Oktavian • Aas Monika</div>',
     unsafe_allow_html=True
 )
