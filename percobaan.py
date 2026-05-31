@@ -6,7 +6,7 @@ import pandas as pd
 import plotly.graph_objects as go
 import plotly.express as px
 
-# ─── PAGE CONFIG ───────────────────────────────────────────────
+#PAGE CONFIG
 st.set_page_config(
     page_title="Sistem Kelayakan Beasiswa",
     page_icon="🎓",
@@ -14,7 +14,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# ─── CUSTOM CSS ────────────────────────────────────────────────
+# CUSTOM CSS 
 st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap');
@@ -149,7 +149,7 @@ h2, h3 {
 """, unsafe_allow_html=True)
 
 
-# ─── FUZZY SYSTEM ──────────────────────────────────────────────
+# FUZZY SYSTEM 
 @st.cache_resource
 def build_fuzzy_system():
     gpa       = ctrl.Antecedent(np.arange(0, 4.1, 0.1), 'gpa')
@@ -208,10 +208,20 @@ def build_fuzzy_system():
     return kelayakan_sim, gpa, absences, study_time, kelayakan
 
 
-# ─── HITUNG SKOR BATCH (EFISIEN) ───────────────────────────────
+def get_activity_bonus(extracurricular, sports, music, volunteering):
+    bonus = 0
+    if extracurricular: bonus += 2
+    if sports:          bonus += 2
+    if music:           bonus += 1
+    if volunteering:    bonus += 2
+    return bonus
+
+
+# HITUNG SKOR BATCH
 def hitung_skor_batch(df, sim):
     """
-    Hitung skor fuzzy seluruh baris DataFrame menggunakan SATU simulasi yang sama.
+    Hitung skor fuzzy seluruh baris DataFrame menggunakan SATU simulasi.
+    Skor final = skor fuzzy + bonus aktivitas (sama persis dengan Tab 1).
     Baris yang error diberi skor 0.
     """
     scores = []
@@ -221,28 +231,75 @@ def hitung_skor_batch(df, sim):
             sim.input['absences']   = float(row['Absences'])
             sim.input['study_time'] = float(row['StudyTimeWeekly'])
             sim.compute()
-            scores.append(sim.output['kelayakan'])
+            skor_fuzzy = sim.output['kelayakan']
+
+            # bonus aktivitas — kolom bisa 0/1 atau tidak ada
+            bonus = get_activity_bonus(
+                bool(int(row.get('Extracurricular', 0))),
+                bool(int(row.get('Sports',          0))),
+                bool(int(row.get('Music',           0))),
+                bool(int(row.get('Volunteering',    0))),
+            )
+            scores.append(min(skor_fuzzy + bonus, 100))
         except Exception:
             scores.append(0.0)
     return scores
 
 
-# ─── LOAD DATA ─────────────────────────────────────────────────
+# LOAD DATA 
+CSV_PATH = 'Student_performance_data_.csv'
+
 def load_data():
-    """Load CSV dan gabungkan dengan data session."""
+    """Load langsung dari CSV (selalu fresh, tidak di-cache)."""
     try:
-        df = pd.read_csv('Student_performance_data_.csv')
+        return pd.read_csv(CSV_PATH)
     except Exception:
-        df = pd.DataFrame()
-
-    if 'tambahan_data' in st.session_state and st.session_state['tambahan_data']:
-        df_tambahan = pd.DataFrame(st.session_state['tambahan_data'])
-        df = pd.concat([df, df_tambahan], ignore_index=True)
-
-    return df
+        return pd.DataFrame()
 
 
-# ─── HELPER FUNCTIONS ──────────────────────────────────────────
+def simpan_ke_csv(baris: dict):
+    """
+    Tambahkan satu baris ke CSV dengan format kolom yang sesuai dataset asli.
+    Kolom yang tidak ada di form diisi 0 sebagai nilai default.
+    """
+    df_existing = load_data()
+
+    # Buat ID baru
+    if 'StudentID' in df_existing.columns and not df_existing.empty:
+        try:
+            last_id = pd.to_numeric(df_existing['StudentID'], errors='coerce').max()
+            new_id  = int(last_id) + 1 if not pd.isna(last_id) else 9001
+        except Exception:
+            new_id = 9001
+    else:
+        new_id = 9001
+
+    
+    baris_csv = {
+        'StudentID':        new_id,
+        'Age':              0,
+        'Gender':           0,
+        'Ethnicity':        0,
+        'ParentalEducation':0,
+        'StudyTimeWeekly':  baris['StudyTimeWeekly'],
+        'Absences':         baris['Absences'],
+        'Tutoring':         0,
+        'ParentalSupport':  0,
+        'Extracurricular':  baris['Extracurricular'],
+        'Sports':           baris['Sports'],
+        'Music':            baris['Music'],
+        'Volunteering':     baris['Volunteering'],
+        'GPA':              baris['GPA'],
+        'GradeClass':       0,
+    }
+
+    df_baru    = pd.DataFrame([baris_csv])
+    df_updated = pd.concat([df_existing, df_baru], ignore_index=True)
+    df_updated.to_csv(CSV_PATH, index=False)
+    return new_id
+
+
+# HELPER FUNCTIONS
 def get_grade_label(gpa_val):
     if gpa_val >= 3.5: return "A", "grade-a"
     elif gpa_val >= 3.0: return "B", "grade-b"
@@ -257,21 +314,10 @@ def get_status(score):
     else:             return "❌ DITOLAK",            "badge-ditolak"
 
 
-def get_activity_bonus(extracurricular, sports, music, volunteering):
-    bonus = 0
-    if extracurricular: bonus += 2
-    if sports:          bonus += 2
-    if music:           bonus += 1
-    if volunteering:    bonus += 2
-    return bonus
 
 
-# ─── SESSION STATE ─────────────────────────────────────────────
-if 'tambahan_data' not in st.session_state:
-    st.session_state['tambahan_data'] = []
 
-
-# ─── SIDEBAR ───────────────────────────────────────────────────
+# SIDEBAR 
 with st.sidebar:
     st.markdown("## 🎓 Input Data Siswa")
     st.markdown('<div class="divider"></div>', unsafe_allow_html=True)
@@ -280,11 +326,22 @@ with st.sidebar:
 
     st.markdown("### Parameter Akademik")
 
-    gpa_input = st.slider(
+    gpa_raw = st.text_input(
         "GPA (Nilai Rata-rata)",
-        min_value=0.0, max_value=4.0, value=2.8, step=0.1,
-        help="Grade Point Average skala 0.0 - 4.0"
+        value="2.8",
+        placeholder="Contoh: 3.75",
+        help="Grade Point Average skala 0.0 - 4.0, boleh desimal bebas"
     )
+
+    # Validasi input GPA
+    try:
+        gpa_input = float(gpa_raw.replace(',', '.'))
+        if gpa_input < 0.0 or gpa_input > 4.0:
+            st.error("GPA harus antara 0.0 dan 4.0!")
+            gpa_input = max(0.0, min(4.0, gpa_input))
+    except ValueError:
+        st.error("GPA tidak valid! gunakan angka (contoh: 3.75)")
+        gpa_input = 0.0
 
     grade_label, grade_class = get_grade_label(gpa_input)
     st.markdown(
@@ -312,7 +369,7 @@ with st.sidebar:
 
     st.markdown('<div class="divider"></div>', unsafe_allow_html=True)
 
-    hitung = st.button("tambah ke dataset", use_container_width=True, type="primary")
+    hitung = st.button("Tambah ke dataset", use_container_width=True, type="primary")
 
     st.markdown("### ℹ️ Keterangan Nilai")
     st.markdown("""
@@ -336,9 +393,7 @@ sim, fz_gpa, fz_abs, fz_study, fz_kel = build_fuzzy_system()
 tab1, tab2, tab3 = st.tabs(["Evaluasi Siswa", "Visualisasi Fuzzy", "Data Statistik"])
 
 
-# ══════════════════════════════════════════════════════════════
 # TAB 1: EVALUASI
-# ══════════════════════════════════════════════════════════════
 with tab1:
     score_fuzzy = 0.0
     bonus       = 0
@@ -354,29 +409,27 @@ with tab1:
     except Exception as e:
         st.error(f"Error saat menghitung fuzzy: {e}")
 
-    # ── Simpan ke dataset saat tombol Hitung ditekan ──
+    # ── Simpan ke CSV saat tombol Hitung ditekan ──
     if hitung:
         if not nama.strip():
-            st.warning("⚠️ Harap isi **Nama Siswa** sebelum menyimpan.")
+            st.warning("Harap isi **Nama Siswa** sebelum menyimpan.")
         else:
-            baris_baru = {
-                'StudentID':      f"NEW-{len(st.session_state['tambahan_data']) + 1:04d}",
-                'GPA':            gpa_input,
-                'Absences':       absences_input,
-                'StudyTimeWeekly':study_input,
-                'Extracurricular':int(extracurricular),
-                'Sports':         int(sports),
-                'Music':          int(music),
-                'Volunteering':   int(volunteering),
-                '_Nama':          nama,
-                '_SkorKelayakan': round(score, 2),
-                '_Status':        get_status(score)[0],
-            }
-            st.session_state['tambahan_data'].append(baris_baru)
-            st.success(
-                f"✅ Data **{nama}** berhasil ditambahkan ke dataset! "
-                f"(Total tambahan: {len(st.session_state['tambahan_data'])})"
-            )
+            try:
+                new_id = simpan_ke_csv({
+                    'GPA':            gpa_input,
+                    'Absences':       absences_input,
+                    'StudyTimeWeekly':study_input,
+                    'Extracurricular':int(extracurricular),
+                    'Sports':         int(sports),
+                    'Music':          int(music),
+                    'Volunteering':   int(volunteering),
+                })
+                st.success(
+                    f"✅ Data **{nama}** berhasil disimpan ke dataset! "
+                    f"(StudentID: {new_id})"
+                )
+            except Exception as e:
+                st.error(f"❌ Gagal menyimpan data: {e}")
 
     status_text, status_class = get_status(score)
 
@@ -385,7 +438,7 @@ with tab1:
     with col1:
         st.markdown("#### 👤 Identitas")
         st.markdown(f"**Nama:** {nama if nama else 'Belum diisi'}")
-        st.markdown(f"**GPA:** `{gpa_input:.1f}` / 4.0")
+        st.markdown(f"**GPA:** `{gpa_input}` / 4.0")
         st.markdown(f"**Absensi:** `{absences_input}` hari")
         st.markdown(f"**Waktu Belajar:** `{study_input:.1f}` jam/minggu")
         aktivitas = []
@@ -466,9 +519,7 @@ with tab1:
             st.markdown(f'<div style="color:{color}">• {label.capitalize()}: <strong>{mf:.3f}</strong></div>', unsafe_allow_html=True)
 
 
-# ══════════════════════════════════════════════════════════════
 # TAB 2: VISUALISASI FUZZY
-# ══════════════════════════════════════════════════════════════
 with tab2:
     st.markdown("### Fungsi Keanggotaan")
 
@@ -514,9 +565,7 @@ with tab2:
         st.plotly_chart(plot_mf(fz_kel.universe,   fz_kel,   score,         "Output Kelayakan",      "Skor"), use_container_width=True)
 
 
-# ══════════════════════════════════════════════════════════════
 # TAB 3: STATISTIK DATA
-# ══════════════════════════════════════════════════════════════
 with tab3:
     df = load_data()
 
@@ -537,7 +586,7 @@ with tab3:
 
         st.markdown('<div class="divider"></div>', unsafe_allow_html=True)
 
-        # ── Hitung skor fuzzy EFISIEN: pakai 1 simulasi untuk semua baris ──
+        # Hitung skor fuzzy
         df_rank = df.copy()
         with st.spinner("Menghitung skor kelayakan seluruh siswa..."):
             df_rank['Skor_Kelayakan'] = hitung_skor_batch(df_rank, sim)
@@ -649,6 +698,6 @@ with tab3:
 # ─── FOOTER ────────────────────────────────────────────────────
 st.markdown('<div class="divider"></div>', unsafe_allow_html=True)
 st.markdown(
-    '<div class="footer">Sistem Kelayakan Beasiswa • Logika Fuzzy Mamdani • 2025</div>',
+    '<div class="footer">Sistem Kelayakan Beasiswa Logika Fuzzy Mamdani• Rizky Rama Oktavian • Aas Monika</div>',
     unsafe_allow_html=True
 )
