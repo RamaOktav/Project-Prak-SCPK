@@ -45,11 +45,17 @@ section[data-testid="stSidebar"] {
 }
 
 .metric-card {
-    background: linear-gradient(135deg, rgba(0,100,200,0.15) 0%, rgba(0,60,120,0.1) 100%);
+    background: linear-gradient(135deg,
+        rgba(0,100,200,0.15) 0%,
+        rgba(0,60,120,0.1) 100%);
     border: 1px solid #1e4d8c;
     border-radius: 12px;
     padding: 20px;
     text-align: center;
+    min-height: 140px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
 }
 
 /* Result badges */
@@ -172,8 +178,8 @@ def build_fuzzy_system():
 
     # Membership functions - Absences
     absences['sedikit'] = fuzz.trapmf(absences.universe, [0, 0, 5, 12])
-    absences['sedang']  = fuzz.trimf(absences.universe, [8, 15, 22])
-    absences['banyak']  = fuzz.trapmf(absences.universe, [18, 25, 30, 30])
+    absences['sedang']  = fuzz.trimf(absences.universe, [9, 13, 17])
+    absences['banyak']  = fuzz.trapmf(absences.universe, [15, 20, 30, 30])
 
     # Membership functions - Study Time
     study_time['kurang'] = fuzz.trapmf(study_time.universe, [0, 0, 4, 8])
@@ -258,6 +264,22 @@ def get_status(score):
     else:
         return "❌ DITOLAK", "badge-ditolak"
 
+def get_activity_bonus(extracurricular, sports, music, volunteering):
+    bonus = 0
+
+    if extracurricular:
+        bonus += 2
+
+    if sports:
+        bonus += 2
+
+    if music:
+        bonus += 1
+
+    if volunteering:
+        bonus += 3
+
+    return bonus
 
 # ─── SIDEBAR ───────────────────────────────────────────────────
 with st.sidebar:
@@ -291,6 +313,13 @@ with st.sidebar:
         min_value=0.0, max_value=20.0, value=10.0, step=0.5,
         help="Rata-rata jam belajar per minggu"
     )
+
+    st.markdown("### 🏆 Aktivitas Siswa")
+
+    extracurricular = st.checkbox("Ekstrakurikuler")
+    sports = st.checkbox("Olahraga")
+    music = st.checkbox("Musik")
+    volunteering = st.checkbox("Volunteer / Sosial")
 
     st.markdown('<div class="divider"></div>', unsafe_allow_html=True)
 
@@ -329,7 +358,16 @@ with tab1:
             sim.input['absences']   = absences_input
             sim.input['study_time'] = study_input
             sim.compute()
-            score = sim.output['kelayakan']
+            score_fuzzy = sim.output['kelayakan']
+            bonus = get_activity_bonus(
+                extracurricular,
+                sports,
+                music,
+                volunteering
+            )
+
+            score = min(score_fuzzy + bonus, 100)
+            
         except Exception as e:
             score = 0.0
 
@@ -339,18 +377,36 @@ with tab1:
         col1, col2, col3 = st.columns([1, 1, 1])
 
         with col1:
-            st.markdown('<div class="card">', unsafe_allow_html=True)
+            # st.markdown('<div class="card">', unsafe_allow_html=True)
             st.markdown("#### 👤 Identitas")
             st.markdown(f"**Nama:** {nama if nama else 'Belum diisi'}")
             st.markdown(f"**GPA:** `{gpa_input:.1f}` / 4.0")
             st.markdown(f"**Absensi:** `{absences_input}` hari")
             st.markdown(f"**Waktu Belajar:** `{study_input:.1f}` jam/minggu")
-            st.markdown('</div>', unsafe_allow_html=True)
+            aktivitas = []
+
+            if extracurricular:
+                aktivitas.append("Ekskul")
+
+            if sports:
+                aktivitas.append("Olahraga")
+
+            if music:
+                aktivitas.append("Musik")
+
+            if volunteering:
+                aktivitas.append("Volunteer")
+
+            st.markdown(
+                f"**Aktivitas:** {', '.join(aktivitas) if aktivitas else 'Tidak ada'}"
+            )
+            
 
         with col2:
-            st.markdown('<div class="card" style="text-align:center">', unsafe_allow_html=True)
+            # st.markdown('<div class="card" style="text-align:center">', unsafe_allow_html=True)
             st.markdown("#### 🎯 Skor Kelayakan")
             st.markdown(f'<div class="score-big">{score:.1f}</div>', unsafe_allow_html=True)
+            st.caption(f"Skor Fuzzy: {score_fuzzy:.1f} | Bonus Aktivitas: +{bonus}")
             st.markdown('<div style="color:#3d5a80; font-size:0.9rem;">dari 100</div>', unsafe_allow_html=True)
 
             # Progress bar using plotly gauge
@@ -382,11 +438,11 @@ with tab1:
                 font={'color': '#a8d4f5'}
             )
             st.plotly_chart(fig_gauge, use_container_width=True)
-            st.markdown('</div>', unsafe_allow_html=True)
+            # st.markdown('</div>', unsafe_allow_html=True)
 
         with col3:
-            st.markdown('<div class="card" style="text-align:center; padding-top:40px">', unsafe_allow_html=True)
-            st.markdown("#### 📋 Status")
+            # st.markdown('<div class="card" style="text-align:center; padding-top:40px">', unsafe_allow_html=True)
+            st.markdown("#### Status")
             st.markdown(f'<div class="{status_class}">{status_text}</div>', unsafe_allow_html=True)
             st.markdown("<br>", unsafe_allow_html=True)
 
@@ -412,41 +468,41 @@ with tab1:
                 Fokus pada peningkatan GPA dan kehadiran.
                 </div>
                 """, unsafe_allow_html=True)
-            st.markdown('</div>', unsafe_allow_html=True)
+            # st.markdown('</div>', unsafe_allow_html=True)
 
         # ── Membership Degrees ──
         st.markdown("### 🔢 Derajat Keanggotaan Fuzzy")
         col_a, col_b, col_c = st.columns(3)
 
         with col_a:
-            st.markdown('<div class="card">', unsafe_allow_html=True)
+            
             st.markdown("**📚 GPA**")
             gpa_u = fz_gpa.universe
             for label in ['rendah', 'cukup', 'tinggi']:
                 mf = fuzz.interp_membership(gpa_u, fz_gpa[label].mf, gpa_input)
                 color = "#4facfe" if mf > 0 else "#3d5a80"
                 st.markdown(f'<div style="color:{color}">• {label.capitalize()}: <strong>{mf:.3f}</strong></div>', unsafe_allow_html=True)
-            st.markdown('</div>', unsafe_allow_html=True)
+            
 
         with col_b:
-            st.markdown('<div class="card">', unsafe_allow_html=True)
+            
             st.markdown("**📅 Absensi**")
             abs_u = fz_abs.universe
             for label in ['sedikit', 'sedang', 'banyak']:
                 mf = fuzz.interp_membership(abs_u, fz_abs[label].mf, absences_input)
                 color = "#4facfe" if mf > 0 else "#3d5a80"
                 st.markdown(f'<div style="color:{color}">• {label.capitalize()}: <strong>{mf:.3f}</strong></div>', unsafe_allow_html=True)
-            st.markdown('</div>', unsafe_allow_html=True)
+            
 
         with col_c:
-            st.markdown('<div class="card">', unsafe_allow_html=True)
+            
             st.markdown("**⏱️ Waktu Belajar**")
             std_u = fz_study.universe
             for label in ['kurang', 'cukup', 'banyak']:
                 mf = fuzz.interp_membership(std_u, fz_study[label].mf, study_input)
                 color = "#4facfe" if mf > 0 else "#3d5a80"
                 st.markdown(f'<div style="color:{color}">• {label.capitalize()}: <strong>{mf:.3f}</strong></div>', unsafe_allow_html=True)
-            st.markdown('</div>', unsafe_allow_html=True)
+            
 
 
 # ══════════════════════════════════════════════════════════════
@@ -526,21 +582,34 @@ with tab3:
 
         col1, col2, col3, col4 = st.columns(4)
         with col1:
-            st.markdown('<div class="metric-card">', unsafe_allow_html=True)
-            st.metric("Total Siswa", f"{len(df):,}")
-            st.markdown('</div>', unsafe_allow_html=True)
+
+            st.markdown(f"""
+            <div class="metric-card">
+                <h4 style="margin-bottom:10px; color:#a8d4f5;">Total Siswa</h4>
+                <h2 style="color:#4facfe;">{len(df):,}</h2>
+            </div>
+            """, unsafe_allow_html=True)
         with col2:
-            st.markdown('<div class="metric-card">', unsafe_allow_html=True)
-            st.metric("Rata-rata GPA", f"{df['GPA'].mean():.2f}")
-            st.markdown('</div>', unsafe_allow_html=True)
+             st.markdown(f"""
+            <div class="metric-card">
+                <h4 style="margin-bottom:10px; color:#a8d4f5;">Rata-rata GPA</h4>
+                <h2 style="color:#4facfe;">{df['GPA'].mean():.2f}</h2>
+            </div>
+            """, unsafe_allow_html=True)
         with col3:
-            st.markdown('<div class="metric-card">', unsafe_allow_html=True)
-            st.metric("Rata-rata Absensi", f"{df['Absences'].mean():.1f} hari")
-            st.markdown('</div>', unsafe_allow_html=True)
+             st.markdown(f"""
+            <div class="metric-card">
+                <h4 style="margin-bottom:10px; color:#a8d4f5;">Rata-rata Absensi</h4>
+                <h2 style="color:#4facfe;">{df['Absences'].mean():.1f} hari</h2>
+            </div>
+            """, unsafe_allow_html=True)
         with col4:
-            st.markdown('<div class="metric-card">', unsafe_allow_html=True)
-            st.metric("Rata-rata Belajar", f"{df['StudyTimeWeekly'].mean():.1f} jam/minggu")
-            st.markdown('</div>', unsafe_allow_html=True)
+            st.markdown(f"""
+            <div class="metric-card">
+                <h4 style="margin-bottom:10px; color:#a8d4f5;"> lama Belajar(per minggu)</h4>
+                <h2 style="color:#4facfe;">{df['StudyTimeWeekly'].mean():.1f} jam</h2>
+            </div>
+            """, unsafe_allow_html=True)
 
         st.markdown('<div class="divider"></div>', unsafe_allow_html=True)
 
