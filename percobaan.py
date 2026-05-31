@@ -23,18 +23,15 @@ html, body, [class*="css"] {
     font-family: 'Space Grotesk', sans-serif;
 }
 
-/* Dark background */
 .stApp {
     background: linear-gradient(135deg, #0a0f1e 0%, #0d1b2a 50%, #0a1628 100%);
 }
 
-/* Sidebar */
 section[data-testid="stSidebar"] {
     background: linear-gradient(180deg, #0d1b2a 0%, #1a2744 100%);
     border-right: 1px solid #1e3a5f;
 }
 
-/* Cards */
 .card {
     background: linear-gradient(135deg, rgba(13,27,42,0.9) 0%, rgba(26,39,68,0.9) 100%);
     border: 1px solid #1e3a5f;
@@ -58,7 +55,6 @@ section[data-testid="stSidebar"] {
     justify-content: center;
 }
 
-/* Result badges */
 .badge-diterima {
     background: linear-gradient(135deg, #00b09b, #96c93d);
     color: white;
@@ -90,7 +86,6 @@ section[data-testid="stSidebar"] {
     letter-spacing: 1px;
 }
 
-/* Score display */
 .score-big {
     font-family: 'JetBrains Mono', monospace;
     font-size: 4rem;
@@ -101,7 +96,6 @@ section[data-testid="stSidebar"] {
     line-height: 1;
 }
 
-/* Headers */
 h1 {
     background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
     -webkit-background-clip: text;
@@ -113,14 +107,12 @@ h2, h3 {
     color: #a8d4f5 !important;
 }
 
-/* Divider */
 .divider {
     height: 1px;
     background: linear-gradient(90deg, transparent, #1e4d8c, transparent);
     margin: 20px 0;
 }
 
-/* Grade pill */
 .grade-pill {
     display: inline-block;
     padding: 4px 14px;
@@ -135,10 +127,8 @@ h2, h3 {
 .grade-d { background: #ef473a33; color: #ef473a; border: 1px solid #ef473a; }
 .grade-f { background: #cb2d3e33; color: #cb2d3e; border: 1px solid #cb2d3e; }
 
-/* Slider labels */
 .stSlider label { color: #a8d4f5 !important; font-size: 0.95rem !important; }
 
-/* Info boxes */
 .info-box {
     background: rgba(79,172,254,0.08);
     border-left: 3px solid #4facfe;
@@ -149,7 +139,6 @@ h2, h3 {
     color: #a8d4f5;
 }
 
-/* Footer */
 .footer {
     text-align: center;
     color: #3d5a80;
@@ -160,40 +149,31 @@ h2, h3 {
 """, unsafe_allow_html=True)
 
 
-# Proses Fuzzy
+# ─── FUZZY SYSTEM ──────────────────────────────────────────────
 @st.cache_resource
 def build_fuzzy_system():
-    # Input variabel
-    gpa = ctrl.Antecedent(np.arange(0, 4.1, 0.1), 'gpa')
-    absences = ctrl.Antecedent(np.arange(0, 31, 1), 'absences')
-    study_time = ctrl.Antecedent(np.arange(0, 21, 1), 'study_time')
+    gpa       = ctrl.Antecedent(np.arange(0, 4.1, 0.1), 'gpa')
+    absences  = ctrl.Antecedent(np.arange(0, 31, 1),    'absences')
+    study_time= ctrl.Antecedent(np.arange(0, 21, 1),    'study_time')
+    kelayakan = ctrl.Consequent(np.arange(0, 101, 1),   'kelayakan')
 
-    # Output variabel
-    kelayakan = ctrl.Consequent(np.arange(0, 101, 1), 'kelayakan')
-
-    # Membership functions - GPA
     gpa['rendah'] = fuzz.trapmf(gpa.universe, [0, 0, 2, 2.5])
-    gpa['cukup']  = fuzz.trimf(gpa.universe, [2, 2.75, 3.5])
+    gpa['cukup']  = fuzz.trimf(gpa.universe,  [2, 2.75, 3.5])
     gpa['tinggi'] = fuzz.trapmf(gpa.universe, [3, 3.5, 4.0, 4.0])
 
-    # Membership functions - Absences
     absences['sedikit'] = fuzz.trapmf(absences.universe, [0, 0, 5, 12])
-    absences['sedang']  = fuzz.trimf(absences.universe, [8, 15, 22])
+    absences['sedang']  = fuzz.trimf(absences.universe,  [8, 15, 22])
     absences['banyak']  = fuzz.trapmf(absences.universe, [18, 25, 30, 30])
 
-    # Membership functions - Study Time
     study_time['kurang'] = fuzz.trapmf(study_time.universe, [0, 0, 4, 8])
-    study_time['cukup']  = fuzz.trimf(study_time.universe, [6, 11, 15])
+    study_time['cukup']  = fuzz.trimf(study_time.universe,  [6, 11, 15])
     study_time['banyak'] = fuzz.trapmf(study_time.universe, [13, 18, 20, 20])
 
-    # Membership functions - Output
     kelayakan['ditolak']         = fuzz.trapmf(kelayakan.universe, [0, 0, 30, 50])
-    kelayakan['dipertimbangkan'] = fuzz.trimf(kelayakan.universe, [40, 60, 80])
+    kelayakan['dipertimbangkan'] = fuzz.trimf(kelayakan.universe,  [40, 60, 80])
     kelayakan['diterima']        = fuzz.trapmf(kelayakan.universe, [70, 85, 100, 100])
 
-    # Rules
     rules = [
-        # GPA RENDAH
         ctrl.Rule(gpa['rendah'] & absences['banyak']  & study_time['kurang'], kelayakan['ditolak']),
         ctrl.Rule(gpa['rendah'] & absences['banyak']  & study_time['cukup'],  kelayakan['ditolak']),
         ctrl.Rule(gpa['rendah'] & absences['banyak']  & study_time['banyak'], kelayakan['ditolak']),
@@ -203,19 +183,15 @@ def build_fuzzy_system():
         ctrl.Rule(gpa['rendah'] & absences['sedikit'] & study_time['kurang'], kelayakan['ditolak']),
         ctrl.Rule(gpa['rendah'] & absences['sedikit'] & study_time['cukup'],  kelayakan['ditolak']),
         ctrl.Rule(gpa['rendah'] & absences['sedikit'] & study_time['banyak'], kelayakan['ditolak']),
-
-        # GPA CUKUP
-        ctrl.Rule(gpa['cukup'] & absences['banyak']  & study_time['kurang'], kelayakan['ditolak']),
-        ctrl.Rule(gpa['cukup'] & absences['banyak']  & study_time['cukup'],  kelayakan['ditolak']),
-        ctrl.Rule(gpa['cukup'] & absences['banyak']  & study_time['banyak'], kelayakan['ditolak']),
-        ctrl.Rule(gpa['cukup'] & absences['sedang']  & study_time['kurang'], kelayakan['ditolak']),
-        ctrl.Rule(gpa['cukup'] & absences['sedang']  & study_time['cukup'],  kelayakan['dipertimbangkan']),
-        ctrl.Rule(gpa['cukup'] & absences['sedang']  & study_time['banyak'], kelayakan['dipertimbangkan']),
-        ctrl.Rule(gpa['cukup'] & absences['sedikit'] & study_time['kurang'], kelayakan['ditolak']),
-        ctrl.Rule(gpa['cukup'] & absences['sedikit'] & study_time['cukup'],  kelayakan['dipertimbangkan']),
-        ctrl.Rule(gpa['cukup'] & absences['sedikit'] & study_time['banyak'], kelayakan['diterima']),
-
-        # GPA TINGGI → dominan diterima
+        ctrl.Rule(gpa['cukup']  & absences['banyak']  & study_time['kurang'], kelayakan['ditolak']),
+        ctrl.Rule(gpa['cukup']  & absences['banyak']  & study_time['cukup'],  kelayakan['ditolak']),
+        ctrl.Rule(gpa['cukup']  & absences['banyak']  & study_time['banyak'], kelayakan['ditolak']),
+        ctrl.Rule(gpa['cukup']  & absences['sedang']  & study_time['kurang'], kelayakan['ditolak']),
+        ctrl.Rule(gpa['cukup']  & absences['sedang']  & study_time['cukup'],  kelayakan['dipertimbangkan']),
+        ctrl.Rule(gpa['cukup']  & absences['sedang']  & study_time['banyak'], kelayakan['dipertimbangkan']),
+        ctrl.Rule(gpa['cukup']  & absences['sedikit'] & study_time['kurang'], kelayakan['ditolak']),
+        ctrl.Rule(gpa['cukup']  & absences['sedikit'] & study_time['cukup'],  kelayakan['dipertimbangkan']),
+        ctrl.Rule(gpa['cukup']  & absences['sedikit'] & study_time['banyak'], kelayakan['diterima']),
         ctrl.Rule(gpa['tinggi'] & absences['banyak']  & study_time['kurang'], kelayakan['ditolak']),
         ctrl.Rule(gpa['tinggi'] & absences['banyak']  & study_time['cukup'],  kelayakan['ditolak']),
         ctrl.Rule(gpa['tinggi'] & absences['banyak']  & study_time['banyak'], kelayakan['ditolak']),
@@ -229,57 +205,71 @@ def build_fuzzy_system():
 
     kelayakan_ctrl = ctrl.ControlSystem(rules)
     kelayakan_sim  = ctrl.ControlSystemSimulation(kelayakan_ctrl)
-
     return kelayakan_sim, gpa, absences, study_time, kelayakan
 
 
+# ─── HITUNG SKOR BATCH (EFISIEN) ───────────────────────────────
+def hitung_skor_batch(df, sim):
+    """
+    Hitung skor fuzzy seluruh baris DataFrame menggunakan SATU simulasi yang sama.
+    Baris yang error diberi skor 0.
+    """
+    scores = []
+    for _, row in df.iterrows():
+        try:
+            sim.input['gpa']        = float(row['GPA'])
+            sim.input['absences']   = float(row['Absences'])
+            sim.input['study_time'] = float(row['StudyTimeWeekly'])
+            sim.compute()
+            scores.append(sim.output['kelayakan'])
+        except Exception:
+            scores.append(0.0)
+    return scores
+
+
 # ─── LOAD DATA ─────────────────────────────────────────────────
-@st.cache_data
 def load_data():
+    """Load CSV dan gabungkan dengan data session."""
     try:
         df = pd.read_csv('Student_performance_data_.csv')
-    except:
+    except Exception:
         df = pd.DataFrame()
+
+    if 'tambahan_data' in st.session_state and st.session_state['tambahan_data']:
+        df_tambahan = pd.DataFrame(st.session_state['tambahan_data'])
+        df = pd.concat([df, df_tambahan], ignore_index=True)
+
     return df
 
 
+# ─── HELPER FUNCTIONS ──────────────────────────────────────────
 def get_grade_label(gpa_val):
-    if gpa_val >= 3.5:
-        return "A", "grade-a"
-    elif gpa_val >= 3.0:
-        return "B", "grade-b"
-    elif gpa_val >= 2.5:
-        return "C", "grade-c"
-    elif gpa_val >= 2.0:
-        return "D", "grade-d"
-    else:
-        return "F", "grade-f"
+    if gpa_val >= 3.5: return "A", "grade-a"
+    elif gpa_val >= 3.0: return "B", "grade-b"
+    elif gpa_val >= 2.5: return "C", "grade-c"
+    elif gpa_val >= 2.0: return "D", "grade-d"
+    else: return "F", "grade-f"
 
 
 def get_status(score):
-    if score >= 70:
-        return "✅ DITERIMA", "badge-diterima"
-    elif score >= 45:
-        return "⚠️ DIPERTIMBANGKAN", "badge-dipertimbangkan"
-    else:
-        return "❌ DITOLAK", "badge-ditolak"
+    if score >= 70:   return "✅ DITERIMA",          "badge-diterima"
+    elif score >= 45: return "⚠️ DIPERTIMBANGKAN", "badge-dipertimbangkan"
+    else:             return "❌ DITOLAK",            "badge-ditolak"
+
 
 def get_activity_bonus(extracurricular, sports, music, volunteering):
     bonus = 0
-
-    if extracurricular:
-        bonus += 2
-
-    if sports:
-        bonus += 2
-
-    if music:
-        bonus += 1
-
-    if volunteering:
-        bonus += 2
-
+    if extracurricular: bonus += 2
+    if sports:          bonus += 2
+    if music:           bonus += 1
+    if volunteering:    bonus += 2
     return bonus
+
+
+# ─── SESSION STATE ─────────────────────────────────────────────
+if 'tambahan_data' not in st.session_state:
+    st.session_state['tambahan_data'] = []
+
 
 # ─── SIDEBAR ───────────────────────────────────────────────────
 with st.sidebar:
@@ -288,7 +278,7 @@ with st.sidebar:
 
     nama = st.text_input("Nama Siswa", placeholder="Masukkan nama...")
 
-    st.markdown("### 📊 Parameter Akademik")
+    st.markdown("### Parameter Akademik")
 
     gpa_input = st.slider(
         "GPA (Nilai Rata-rata)",
@@ -315,15 +305,14 @@ with st.sidebar:
     )
 
     st.markdown("### Aktivitas Siswa")
-
     extracurricular = st.checkbox("Ekstrakurikuler")
-    sports = st.checkbox("Olahraga")
-    music = st.checkbox("Musik")
-    volunteering = st.checkbox("Volunteer / Sosial")
+    sports          = st.checkbox("Olahraga")
+    music           = st.checkbox("Musik")
+    volunteering    = st.checkbox("Volunteer / Sosial")
 
     st.markdown('<div class="divider"></div>', unsafe_allow_html=True)
 
-    hitung = st.button("🔍 Hitung Kelayakan", use_container_width=True, type="primary")
+    hitung = st.button("tambah ke dataset", use_container_width=True, type="primary")
 
     st.markdown("### ℹ️ Keterangan Nilai")
     st.markdown("""
@@ -342,185 +331,155 @@ st.markdown("# 🎓 Sistem Kelayakan Beasiswa")
 st.markdown("#### Berbasis Logika Fuzzy Mamdani")
 st.markdown('<div class="divider"></div>', unsafe_allow_html=True)
 
-# Build fuzzy system
 sim, fz_gpa, fz_abs, fz_study, fz_kel = build_fuzzy_system()
 
-# ─── TABS ──────────────────────────────────────────────────────
-tab1, tab2, tab3 = st.tabs(["📋 Evaluasi Siswa", "📈 Visualisasi Fuzzy", "📊 Data Statistik"])
+tab1, tab2, tab3 = st.tabs(["Evaluasi Siswa", "Visualisasi Fuzzy", "Data Statistik"])
+
 
 # ══════════════════════════════════════════════════════════════
 # TAB 1: EVALUASI
 # ══════════════════════════════════════════════════════════════
 with tab1:
-    if hitung or True:  # Always show initial state
-        try:
-            sim.input['gpa']        = gpa_input
-            sim.input['absences']   = absences_input
-            sim.input['study_time'] = study_input
-            sim.compute()
-            score_fuzzy = sim.output['kelayakan']
-            bonus = get_activity_bonus(
-                extracurricular,
-                sports,
-                music,
-                volunteering
+    score_fuzzy = 0.0
+    bonus       = 0
+    score       = 0.0
+    try:
+        sim.input['gpa']        = gpa_input
+        sim.input['absences']   = absences_input
+        sim.input['study_time'] = study_input
+        sim.compute()
+        score_fuzzy = sim.output['kelayakan']
+        bonus       = get_activity_bonus(extracurricular, sports, music, volunteering)
+        score       = min(score_fuzzy + bonus, 100)
+    except Exception as e:
+        st.error(f"Error saat menghitung fuzzy: {e}")
+
+    # ── Simpan ke dataset saat tombol Hitung ditekan ──
+    if hitung:
+        if not nama.strip():
+            st.warning("⚠️ Harap isi **Nama Siswa** sebelum menyimpan.")
+        else:
+            baris_baru = {
+                'StudentID':      f"NEW-{len(st.session_state['tambahan_data']) + 1:04d}",
+                'GPA':            gpa_input,
+                'Absences':       absences_input,
+                'StudyTimeWeekly':study_input,
+                'Extracurricular':int(extracurricular),
+                'Sports':         int(sports),
+                'Music':          int(music),
+                'Volunteering':   int(volunteering),
+                '_Nama':          nama,
+                '_SkorKelayakan': round(score, 2),
+                '_Status':        get_status(score)[0],
+            }
+            st.session_state['tambahan_data'].append(baris_baru)
+            st.success(
+                f"✅ Data **{nama}** berhasil ditambahkan ke dataset! "
+                f"(Total tambahan: {len(st.session_state['tambahan_data'])})"
             )
 
-            score = min(score_fuzzy + bonus, 100)
-            
-        except Exception as e:
-            score = 0.0
+    status_text, status_class = get_status(score)
 
-        status_text, status_class = get_status(score)
+    col1, col2, col3 = st.columns([1, 1, 1])
 
-        # ── Result Row ──
-        col1, col2, col3 = st.columns([1, 1, 1])
+    with col1:
+        st.markdown("#### 👤 Identitas")
+        st.markdown(f"**Nama:** {nama if nama else 'Belum diisi'}")
+        st.markdown(f"**GPA:** `{gpa_input:.1f}` / 4.0")
+        st.markdown(f"**Absensi:** `{absences_input}` hari")
+        st.markdown(f"**Waktu Belajar:** `{study_input:.1f}` jam/minggu")
+        aktivitas = []
+        if extracurricular: aktivitas.append("Ekskul")
+        if sports:          aktivitas.append("Olahraga")
+        if music:           aktivitas.append("Musik")
+        if volunteering:    aktivitas.append("Volunteer")
+        st.markdown(f"**Aktivitas:** {', '.join(aktivitas) if aktivitas else 'Tidak ada'}")
 
-        with col1:
-            # st.markdown('<div class="card">', unsafe_allow_html=True)
-            st.markdown("#### 👤 Identitas")
-            st.markdown(f"**Nama:** {nama if nama else 'Belum diisi'}")
-            st.markdown(f"**GPA:** `{gpa_input:.1f}` / 4.0")
-            st.markdown(f"**Absensi:** `{absences_input}` hari")
-            st.markdown(f"**Waktu Belajar:** `{study_input:.1f}` jam/minggu")
-            aktivitas = []
+    with col2:
+        st.markdown("#### Skor Kelayakan")
+        st.markdown(f'<div class="score-big">{score:.1f}</div>', unsafe_allow_html=True)
+        st.caption(f"Skor Fuzzy: {score_fuzzy:.1f} | Bonus Aktivitas: +{bonus}")
+        st.markdown('<div style="color:#3d5a80; font-size:0.9rem;">dari 100</div>', unsafe_allow_html=True)
 
-            if extracurricular:
-                aktivitas.append("Ekskul")
+        fig_gauge = go.Figure(go.Indicator(
+            mode="gauge+number",
+            value=score,
+            domain={'x': [0, 1], 'y': [0, 1]},
+            gauge={
+                'axis': {'range': [0, 100], 'tickcolor': '#4facfe'},
+                'bar':  {'color': '#4facfe'},
+                'bgcolor': '#0d1b2a',
+                'steps': [
+                    {'range': [0, 45],   'color': 'rgba(203,45,62,0.2)'},
+                    {'range': [45, 70],  'color': 'rgba(247,151,30,0.2)'},
+                    {'range': [70, 100], 'color': 'rgba(0,176,155,0.2)'},
+                ],
+                'threshold': {
+                    'line': {'color': 'white', 'width': 2},
+                    'thickness': 0.75,
+                    'value': score
+                }
+            },
+            number={'font': {'color': '#4facfe', 'size': 40}}
+        ))
+        fig_gauge.update_layout(
+            height=200,
+            margin=dict(l=20, r=20, t=20, b=20),
+            paper_bgcolor='rgba(0,0,0,0)',
+            font={'color': '#a8d4f5'}
+        )
+        st.plotly_chart(fig_gauge, use_container_width=True)
 
-            if sports:
-                aktivitas.append("Olahraga")
+    with col3:
+        st.markdown("#### Status")
+        st.markdown(f'<div class="{status_class}">{status_text}</div>', unsafe_allow_html=True)
+        st.markdown("<br>", unsafe_allow_html=True)
+        if score >= 70:
+            st.markdown('<div class="info-box">Siswa memenuhi kriteria dan <strong>layak menerima beasiswa</strong>. Pertahankan prestasi akademik!</div>', unsafe_allow_html=True)
+        elif score >= 45:
+            st.markdown('<div class="info-box">Siswa <strong>perlu ditinjau lebih lanjut</strong>. Tingkatkan GPA dan kurangi absensi.</div>', unsafe_allow_html=True)
+        else:
+            st.markdown('<div class="info-box">Siswa <strong>belum memenuhi kriteria</strong>. Fokus pada peningkatan GPA dan kehadiran.</div>', unsafe_allow_html=True)
 
-            if music:
-                aktivitas.append("Musik")
+    st.markdown("### Derajat Keanggotaan Fuzzy")
+    col_a, col_b, col_c = st.columns(3)
 
-            if volunteering:
-                aktivitas.append("Volunteer")
+    with col_a:
+        st.markdown("**GPA**")
+        for label in ['rendah', 'cukup', 'tinggi']:
+            mf    = fuzz.interp_membership(fz_gpa.universe, fz_gpa[label].mf, gpa_input)
+            color = "#4facfe" if mf > 0 else "#3d5a80"
+            st.markdown(f'<div style="color:{color}">• {label.capitalize()}: <strong>{mf:.3f}</strong></div>', unsafe_allow_html=True)
 
-            st.markdown(
-                f"**Aktivitas:** {', '.join(aktivitas) if aktivitas else 'Tidak ada'}"
-            )
-            
+    with col_b:
+        st.markdown("**Absensi**")
+        for label in ['sedikit', 'sedang', 'banyak']:
+            mf    = fuzz.interp_membership(fz_abs.universe, fz_abs[label].mf, absences_input)
+            color = "#4facfe" if mf > 0 else "#3d5a80"
+            st.markdown(f'<div style="color:{color}">• {label.capitalize()}: <strong>{mf:.3f}</strong></div>', unsafe_allow_html=True)
 
-        with col2:
-            # st.markdown('<div class="card" style="text-align:center">', unsafe_allow_html=True)
-            st.markdown("#### 🎯 Skor Kelayakan")
-            st.markdown(f'<div class="score-big">{score:.1f}</div>', unsafe_allow_html=True)
-            st.caption(f"Skor Fuzzy: {score_fuzzy:.1f} | Bonus Aktivitas: +{bonus}")
-            st.markdown('<div style="color:#3d5a80; font-size:0.9rem;">dari 100</div>', unsafe_allow_html=True)
-
-            # Progress bar using plotly gauge
-            fig_gauge = go.Figure(go.Indicator(
-                mode="gauge+number",
-                value=score,
-                domain={'x': [0, 1], 'y': [0, 1]},
-                gauge={
-                    'axis': {'range': [0, 100], 'tickcolor': '#4facfe'},
-                    'bar': {'color': '#4facfe'},
-                    'bgcolor': '#0d1b2a',
-                    'steps': [
-                        {'range': [0, 45],  'color': 'rgba(203,45,62,0.2)'},
-                        {'range': [45, 70], 'color': 'rgba(247,151,30,0.2)'},
-                        {'range': [70, 100],'color': 'rgba(0,176,155,0.2)'},
-                    ],
-                    'threshold': {
-                        'line': {'color': 'white', 'width': 2},
-                        'thickness': 0.75,
-                        'value': score
-                    }
-                },
-                number={'font': {'color': '#4facfe', 'size': 40}}
-            ))
-            fig_gauge.update_layout(
-                height=200,
-                margin=dict(l=20, r=20, t=20, b=20),
-                paper_bgcolor='rgba(0,0,0,0)',
-                font={'color': '#a8d4f5'}
-            )
-            st.plotly_chart(fig_gauge, use_container_width=True)
-            # st.markdown('</div>', unsafe_allow_html=True)
-
-        with col3:
-            # st.markdown('<div class="card" style="text-align:center; padding-top:40px">', unsafe_allow_html=True)
-            st.markdown("#### Status")
-            st.markdown(f'<div class="{status_class}">{status_text}</div>', unsafe_allow_html=True)
-            st.markdown("<br>", unsafe_allow_html=True)
-
-            # Interpretation
-            if score >= 70:
-                st.markdown("""
-                <div class="info-box">
-                Siswa memenuhi kriteria dan <strong>layak menerima beasiswa</strong>.
-                Pertahankan prestasi akademik!
-                </div>
-                """, unsafe_allow_html=True)
-            elif score >= 45:
-                st.markdown("""
-                <div class="info-box">
-                Siswa <strong>perlu ditinjau lebih lanjut</strong>.
-                Tingkatkan GPA dan kurangi absensi.
-                </div>
-                """, unsafe_allow_html=True)
-            else:
-                st.markdown("""
-                <div class="info-box">
-                Siswa <strong>belum memenuhi kriteria</strong>.
-                Fokus pada peningkatan GPA dan kehadiran.
-                </div>
-                """, unsafe_allow_html=True)
-            # st.markdown('</div>', unsafe_allow_html=True)
-
-        # ── Membership Degrees ──
-        st.markdown("### 🔢 Derajat Keanggotaan Fuzzy")
-        col_a, col_b, col_c = st.columns(3)
-
-        with col_a:
-            
-            st.markdown("**📚 GPA**")
-            gpa_u = fz_gpa.universe
-            for label in ['rendah', 'cukup', 'tinggi']:
-                mf = fuzz.interp_membership(gpa_u, fz_gpa[label].mf, gpa_input)
-                color = "#4facfe" if mf > 0 else "#3d5a80"
-                st.markdown(f'<div style="color:{color}">• {label.capitalize()}: <strong>{mf:.3f}</strong></div>', unsafe_allow_html=True)
-            
-
-        with col_b:
-            
-            st.markdown("**📅 Absensi**")
-            abs_u = fz_abs.universe
-            for label in ['sedikit', 'sedang', 'banyak']:
-                mf = fuzz.interp_membership(abs_u, fz_abs[label].mf, absences_input)
-                color = "#4facfe" if mf > 0 else "#3d5a80"
-                st.markdown(f'<div style="color:{color}">• {label.capitalize()}: <strong>{mf:.3f}</strong></div>', unsafe_allow_html=True)
-            
-
-        with col_c:
-            
-            st.markdown("**⏱️ Waktu Belajar**")
-            std_u = fz_study.universe
-            for label in ['kurang', 'cukup', 'banyak']:
-                mf = fuzz.interp_membership(std_u, fz_study[label].mf, study_input)
-                color = "#4facfe" if mf > 0 else "#3d5a80"
-                st.markdown(f'<div style="color:{color}">• {label.capitalize()}: <strong>{mf:.3f}</strong></div>', unsafe_allow_html=True)
-            
+    with col_c:
+        st.markdown("**Waktu Belajar**")
+        for label in ['kurang', 'cukup', 'banyak']:
+            mf    = fuzz.interp_membership(fz_study.universe, fz_study[label].mf, study_input)
+            color = "#4facfe" if mf > 0 else "#3d5a80"
+            st.markdown(f'<div style="color:{color}">• {label.capitalize()}: <strong>{mf:.3f}</strong></div>', unsafe_allow_html=True)
 
 
 # ══════════════════════════════════════════════════════════════
 # TAB 2: VISUALISASI FUZZY
 # ══════════════════════════════════════════════════════════════
 with tab2:
-    st.markdown("### 📈 Fungsi Keanggotaan")
+    st.markdown("### Fungsi Keanggotaan")
 
     def plot_mf(universe, variable, input_val, title, xlabel):
-        fig = go.Figure()
+        fig         = go.Figure()
         colors      = ['#4facfe', '#00f2fe', '#a8d4f5']
         fill_colors = ['rgba(79,172,254,0.15)', 'rgba(0,242,254,0.15)', 'rgba(168,212,245,0.15)']
-        labels = list(variable.terms.keys())
 
-        for i, label in enumerate(labels):
-            mf_vals = variable[label].mf
+        for i, label in enumerate(variable.terms.keys()):
             fig.add_trace(go.Scatter(
-                x=universe, y=mf_vals,
+                x=universe, y=variable[label].mf,
                 mode='lines',
                 name=label.capitalize(),
                 line=dict(color=colors[i % len(colors)], width=2.5),
@@ -528,14 +487,12 @@ with tab2:
                 fillcolor=fill_colors[i % len(fill_colors)]
             ))
 
-        # Vertical line for current value
         fig.add_vline(
             x=input_val, line_dash="dash",
             line_color="#ffd200", line_width=2,
             annotation_text=f"  {input_val}",
             annotation_font_color="#ffd200"
         )
-
         fig.update_layout(
             title=dict(text=title, font=dict(color='#a8d4f5', size=14)),
             xaxis=dict(title=xlabel, color='#a8d4f5', gridcolor='#1e3a5f'),
@@ -550,23 +507,11 @@ with tab2:
 
     col1, col2 = st.columns(2)
     with col1:
-        st.plotly_chart(
-            plot_mf(fz_gpa.universe, fz_gpa, gpa_input, "GPA", "GPA"),
-            use_container_width=True
-        )
-        st.plotly_chart(
-            plot_mf(fz_study.universe, fz_study, study_input, "Waktu Belajar Mingguan", "Jam"),
-            use_container_width=True
-        )
+        st.plotly_chart(plot_mf(fz_gpa.universe,   fz_gpa,   gpa_input,    "GPA",                    "GPA"),  use_container_width=True)
+        st.plotly_chart(plot_mf(fz_study.universe, fz_study, study_input,  "Waktu Belajar Mingguan", "Jam"),  use_container_width=True)
     with col2:
-        st.plotly_chart(
-            plot_mf(fz_abs.universe, fz_abs, absences_input, "Absensi", "Hari"),
-            use_container_width=True
-        )
-        st.plotly_chart(
-            plot_mf(fz_kel.universe, fz_kel, score, "Output Kelayakan", "Skor"),
-            use_container_width=True
-        )
+        st.plotly_chart(plot_mf(fz_abs.universe,   fz_abs,   absences_input,"Absensi",               "Hari"), use_container_width=True)
+        st.plotly_chart(plot_mf(fz_kel.universe,   fz_kel,   score,         "Output Kelayakan",      "Skor"), use_container_width=True)
 
 
 # ══════════════════════════════════════════════════════════════
@@ -576,92 +521,44 @@ with tab3:
     df = load_data()
 
     if df.empty:
-        st.warning("⚠️ File `Student_performance_data_.csv` tidak ditemukan. Pastikan file ada di folder yang sama.")
+        st.warning("File `Student_performance_data_.csv` tidak ditemukan. Pastikan file ada di folder yang sama.")
     else:
-        st.markdown("### 📊 Ringkasan Dataset")
+        st.markdown("### Ringkasan Dataset")
 
         col1, col2, col3, col4 = st.columns(4)
         with col1:
-
-            st.markdown(f"""
-            <div class="metric-card">
-                <h4 style="margin-bottom:10px; color:#a8d4f5;">Total Siswa</h4>
-                <h2 style="color:#4facfe;">{len(df):,}</h2>
-            </div>
-            """, unsafe_allow_html=True)
+            st.markdown(f'<div class="metric-card"><h4 style="color:#a8d4f5;">Total Siswa</h4><h2 style="color:#4facfe;">{len(df):,}</h2></div>', unsafe_allow_html=True)
         with col2:
-             st.markdown(f"""
-            <div class="metric-card">
-                <h4 style="margin-bottom:10px; color:#a8d4f5;">Rata-rata GPA</h4>
-                <h2 style="color:#4facfe;">{df['GPA'].mean():.2f}</h2>
-            </div>
-            """, unsafe_allow_html=True)
+            st.markdown(f'<div class="metric-card"><h4 style="color:#a8d4f5;">Rata-rata GPA</h4><h2 style="color:#4facfe;">{df["GPA"].mean():.2f}</h2></div>', unsafe_allow_html=True)
         with col3:
-             st.markdown(f"""
-            <div class="metric-card">
-                <h4 style="margin-bottom:10px; color:#a8d4f5;">Rata-rata Absensi</h4>
-                <h2 style="color:#4facfe;">{df['Absences'].mean():.1f} hari</h2>
-            </div>
-            """, unsafe_allow_html=True)
+            st.markdown(f'<div class="metric-card"><h4 style="color:#a8d4f5;">Rata-rata Absensi</h4><h2 style="color:#4facfe;">{df["Absences"].mean():.1f} hari</h2></div>', unsafe_allow_html=True)
         with col4:
-            st.markdown(f"""
-            <div class="metric-card">
-                <h4 style="margin-bottom:10px; color:#a8d4f5;"> lama Belajar(per minggu)</h4>
-                <h2 style="color:#4facfe;">{df['StudyTimeWeekly'].mean():.1f} jam</h2>
-            </div>
-            """, unsafe_allow_html=True)
+            st.markdown(f'<div class="metric-card"><h4 style="color:#a8d4f5;">Lama Belajar (per minggu)</h4><h2 style="color:#4facfe;">{df["StudyTimeWeekly"].mean():.1f} jam</h2></div>', unsafe_allow_html=True)
 
         st.markdown('<div class="divider"></div>', unsafe_allow_html=True)
 
-        # Hitung skor fuzzy seluruh siswa
+        # ── Hitung skor fuzzy EFISIEN: pakai 1 simulasi untuk semua baris ──
         df_rank = df.copy()
-
-        scores = []
-
-        for _, row in df_rank.iterrows():
-            sim_tmp, _, _, _, _ = build_fuzzy_system()
-
-            sim_tmp.input['gpa'] = row['GPA']
-            sim_tmp.input['absences'] = row['Absences']
-            sim_tmp.input['study_time'] = row['StudyTimeWeekly']
-
-            sim_tmp.compute()
-
-            scores.append(sim_tmp.output['kelayakan'])
-
-        df_rank['Skor_Kelayakan'] = scores
+        with st.spinner("Menghitung skor kelayakan seluruh siswa..."):
+            df_rank['Skor_Kelayakan'] = hitung_skor_batch(df_rank, sim)
 
         df_rank['Status'] = df_rank['Skor_Kelayakan'].apply(
-            lambda x:
-                "Diterima" if x >= 70
-                else "Dipertimbangkan" if x >= 45
-                else "Ditolak"
+            lambda x: "Diterima" if x >= 70 else "Dipertimbangkan" if x >= 45 else "Ditolak"
         )
 
         col_left, col_right = st.columns(2)
 
         with col_left:
             status_counts = df_rank['Status'].value_counts()
-
             fig_pie = go.Figure(go.Pie(
                 labels=status_counts.index,
                 values=status_counts.values,
                 hole=0.4,
-                marker=dict(
-                    colors=[
-                        '#cb2d3e',
-                        '#f7971e',
-                        '#00b09b'
-                    ]
-                ),
+                marker=dict(colors=['#cb2d3e', '#f7971e', '#00b09b']),
                 textfont=dict(color='white')
             ))
-
             fig_pie.update_layout(
-                title=dict(
-                    text="Tingkat Kelolosan Siswa",
-                    font=dict(color='#a8d4f5')
-                ),
+                title=dict(text="Tingkat Kelolosan Siswa", font=dict(color='#a8d4f5')),
                 paper_bgcolor='rgba(0,0,0,0)',
                 font=dict(color='#a8d4f5'),
                 height=320
@@ -669,7 +566,6 @@ with tab3:
             st.plotly_chart(fig_pie, use_container_width=True)
 
         with col_right:
-            # Distribusi GPA histogram
             fig_hist = px.histogram(
                 df, x='GPA', nbins=30,
                 color_discrete_sequence=['#4facfe'],
@@ -687,10 +583,8 @@ with tab3:
 
         st.markdown('<div class="divider"></div>', unsafe_allow_html=True)
 
-        # ── Ranking Siswa (Tabel List) ──
-        st.markdown("### 🏆 Ranking Siswa Berdasarkan Skor Kelayakan")
+        st.markdown("### Ranking Siswa Berdasarkan Skor Kelayakan")
 
-        # Tentukan kolom kegiatan yang tersedia
         activity_cols = {
             'Extracurricular': 'Ekskul',
             'Sports':          'Olahraga',
@@ -699,46 +593,39 @@ with tab3:
         }
         available_act = {k: v for k, v in activity_cols.items() if k in df_rank.columns}
 
-        # Buat kolom Kegiatan gabungan
         def build_activities(row):
             acts = [label for col, label in available_act.items() if row.get(col, 0) == 1]
             return ', '.join(acts) if acts else '—'
 
         df_rank['Kegiatan'] = df_rank.apply(build_activities, axis=1)
 
-        # Sort & ranking
         ranking_df = df_rank.sort_values('Skor_Kelayakan', ascending=False).reset_index(drop=True)
         ranking_df.insert(0, 'Ranking', ranking_df.index + 1)
 
-        # Filter & pencarian
         col_search, col_filter = st.columns([2, 1])
         with col_search:
             search_id = st.text_input("🔍 Cari ID Siswa", placeholder="Ketik StudentID...")
         with col_filter:
-            filter_status = st.selectbox("📌 Filter Status", ["Semua", "Diterima", "Dipertimbangkan", "Ditolak"])
+            filter_status = st.selectbox("Filter Status", ["Semua", "Diterima", "Dipertimbangkan", "Ditolak"])
 
-        # Terapkan filter
         display_df = ranking_df.copy()
         if search_id:
-            id_col = 'StudentID' if 'StudentID' in display_df.columns else display_df.columns[1]
+            id_col     = 'StudentID' if 'StudentID' in display_df.columns else display_df.columns[1]
             display_df = display_df[display_df[id_col].astype(str).str.contains(search_id, case=False)]
         if filter_status != "Semua":
             display_df = display_df[display_df['Status'] == filter_status]
 
-        # Pilih kolom yang akan ditampilkan
-        id_col = 'StudentID' if 'StudentID' in display_df.columns else display_df.columns[1]
+        id_col    = 'StudentID' if 'StudentID' in display_df.columns else display_df.columns[1]
         show_cols = ['Ranking', id_col, 'GPA', 'Absences', 'StudyTimeWeekly', 'Kegiatan', 'Skor_Kelayakan', 'Status']
         show_cols = [c for c in show_cols if c in display_df.columns]
 
         table_df = display_df[show_cols].rename(columns={
             id_col:            'ID Siswa',
-            'GPA':             'GPA',
             'Absences':        'Absensi (hari)',
             'StudyTimeWeekly': 'Belajar (jam/minggu)',
             'Skor_Kelayakan':  'Skor Kelayakan',
         })
 
-        # Warna baris berdasarkan status
         def highlight_status(row):
             s = row['Status']
             if s == 'Diterima':
@@ -756,7 +643,6 @@ with tab3:
             use_container_width=True,
             height=450,
         )
-
         st.caption(f"Menampilkan {len(display_df):,} dari {len(ranking_df):,} siswa")
 
 
